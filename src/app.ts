@@ -7,6 +7,7 @@ import { authMiddleware } from "./middlewares/auth-middleware.js";
 import errorMiddleware from "./middlewares/error.js";
 import authRoutes from "./routes/auth-routes.js";
 import productRoutes from "./routes/product-routes.js";
+import orderRoutes from "./routes/order-routes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.get("/me", authMiddleware, meController);
 
 app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
+app.use("/orders", orderRoutes);
 
 app.use(errorMiddleware);
 
