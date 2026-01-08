@@ -1,6 +1,7 @@
 import db from "../db";
 import type { CreateOrderSchema } from "../schemas/order-schema";
 import { throwHttpError } from "../utils/http-error";
+import { canTransition } from "../utils/order-status";
 
 export const createOrderService = async (
   userId: string,
@@ -110,6 +111,10 @@ export const cancelOrderService = async ({
     }
 
     const order = orderRes.rows[0];
+
+    if (!canTransition(order.status, "CANCELLED")) {
+      throwHttpError(400, `Cannot cancel order with status ${order.status}`);
+    }
 
     if (order.user_id !== userId) {
       throwHttpError(403, "Not your order");
