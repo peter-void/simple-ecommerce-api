@@ -49,14 +49,14 @@ export const createOrderService = async (
 
     const orderResult = await client.query(
       `
-      INSERT INTO orders (user_id, total_price)
-      VALUES ($1, $2)
+      INSERT INTO orders (user_id, total_price, status)
+      VALUES ($1, $2, $3)
       RETURNING *  
     `,
-      [userId, totalPrice]
+      [userId, totalPrice, "PENDING"]
     );
 
-    const orderId = orderResult.rows[0];
+    const order = orderResult.rows[0];
 
     for (const item of items) {
       const product = await client.query(
@@ -69,7 +69,7 @@ export const createOrderService = async (
         INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
         VALUES ($1, $2, $3, $4)
         `,
-        [orderId, item.productId, item.quantity, product.rows[0].price]
+        [order.id, item.productId, item.quantity, product.rows[0].price]
       );
     }
 
