@@ -26,13 +26,13 @@ export const createOrderService = async (
       );
 
       if (productResult.rowCount === 0) {
-        throw new Error("Product not found");
+        throwHttpError(404, "Product not found");
       }
 
       const product = productResult.rows[0];
 
       if (product.stock < item.quantity) {
-        throw new Error("Insufficient stock");
+        throwHttpError(400, "Insufficient stock");
       }
 
       totalPrice += product.price * item.quantity;
@@ -76,6 +76,87 @@ export const createOrderService = async (
     await client.query("COMMIT");
 
     return orderResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const cancelOrderService = async ({
+  orderId,
+  userId,
+}: {
+  orderId: string;
+  userId: string;
+}) => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const orderRes = await client.query(
+      `
+      SELECT * FROM orders
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [orderId]
+    );
+
+    if (orderRes.rowCount === 0) {
+      throwHttpError(404, "Order not found");
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.user_id !== userId) {
+      throwHttpError(403, "Not your order");
+    }
+
+    if (order.status !== "PENDING") {
+      throwHttpError(400, "Order cannot be cancelled");
+    }
+
+    const itemsRes = await client.query(
+      `
+      SELECT * FROM order_items
+      WHERE order_id = $1
+      `,
+      [order.id]
+    );
+
+    for (const item of itemsRes.rows) {
+      await client.query(
+        `
+        SELECT id FROM products
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [item.product_id]
+      );
+
+      await client.query(
+        `
+        UPDATE products 
+        SET stock = stock + $1
+        WHERE id = $2
+        `,
+        [item.quantity, item.product_id]
+      );
+
+      await client.query(
+        `
+        UPDATE orders
+        SET status = 'CANCELLED'
+        WHERE id = $1
+        `,
+        [orderId]
+      );
+    }
+
+    await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
