@@ -14,6 +14,7 @@ export const createOrderService = async (
     await client.query("BEGIN");
 
     let totalPrice = 0;
+    let productPrice = 0;
 
     for (const item of items) {
       const productResult = await client.query(
@@ -31,6 +32,8 @@ export const createOrderService = async (
       }
 
       const product = productResult.rows[0];
+
+      productPrice = product.price;
 
       if (product.stock < item.quantity) {
         throwHttpError(400, "Insufficient stock");
@@ -60,17 +63,12 @@ export const createOrderService = async (
     const order = orderResult.rows[0];
 
     for (const item of items) {
-      const product = await client.query(
-        `SELECT price FROM products WHERE id = $1`,
-        [item.productId]
-      );
-
       await client.query(
         `
         INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
         VALUES ($1, $2, $3, $4)
         `,
-        [order.id, item.productId, item.quantity, product.rows[0].price]
+        [order.id, item.productId, item.quantity, productPrice]
       );
     }
 
@@ -100,10 +98,10 @@ export const cancelOrderService = async ({
     const orderRes = await client.query(
       `
       SELECT * FROM orders
-      WHERE id = $1
+      WHERE id = $1 AND user_id $2
       FOR UPDATE
       `,
-      [orderId]
+      [orderId, userId]
     );
 
     if (orderRes.rowCount === 0) {
@@ -114,10 +112,6 @@ export const cancelOrderService = async ({
 
     if (!canTransition(order.status, "CANCELLED")) {
       throwHttpError(400, `Cannot cancel order with status ${order.status}`);
-    }
-
-    if (order.user_id !== userId) {
-      throwHttpError(403, "Not your order");
     }
 
     if (order.status !== "PENDING") {
@@ -150,16 +144,16 @@ export const cancelOrderService = async ({
         `,
         [item.quantity, item.product_id]
       );
+    }
 
-      await client.query(
-        `
+    await client.query(
+      `
         UPDATE orders
         SET status = 'CANCELLED'
         WHERE id = $1
         `,
-        [orderId]
-      );
-    }
+      [orderId]
+    );
 
     await client.query("COMMIT");
   } catch (error) {
