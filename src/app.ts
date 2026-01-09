@@ -13,6 +13,12 @@ const app = express();
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(
+  express.raw({
+    type: ["image/png", "image/jpeg", "image/jpg"],
+    limit: "10mb",
+  })
+);
 
 app.get("/health", async (req, res) => {
   const result = await db.query("SELECT 1");

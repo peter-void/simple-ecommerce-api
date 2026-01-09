@@ -9,6 +9,7 @@ import { requireRole } from "../middlewares/require-role.js";
 import { authMiddleware } from "../middlewares/auth-middleware.js";
 import { validate } from "../middlewares/validate.js";
 import { createProductSchema } from "../schemas/product-schema.js";
+import { uploadProductImageController } from "../controllers/upload-product-image-controller.js";
 
 const router = express.Router();
 
@@ -35,5 +36,7 @@ router.delete(
   requireRole("ADMIN"),
   deleteProductController
 );
+
+router.post("/:id/upload", authMiddleware, uploadProductImageController);
 
 export default router;
