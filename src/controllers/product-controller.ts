@@ -6,21 +6,35 @@ import {
   updateProductService,
 } from "../services/product-service.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import crypto from "crypto";
 
 export const getAllProductController = asyncHandler(
   async (req: Request, res: Response) => {
     const page = Math.max(Number(req.query?.page ?? "1"), 1);
-    const limit = Math.min(Math.max(Number(req.query?.limit ?? "10"), 1), 50);
-
+    const limit = Math.min(Math.max(Number(req.query?.limit ?? "10"), 1), 10);
     const search = ((req.query?.search as string) ?? "").trim() ?? "";
-
     const offset = (page - 1) * limit;
+
+    console.log("🔥 HITTING DATABASE");
 
     const { data, total } = await getAllProductService({
       limit,
       offset,
       search,
     });
+
+    // Initialize ETag from response data
+    const body = JSON.stringify({ data, total });
+    const etag = crypto.createHash("sha1").update(body).digest("hex");
+
+    // Compare with client ETag
+    const clientTag = req.headers["if-none-match"];
+
+    if (clientTag === etag) {
+      return res.status(304).end();
+    }
+
+    res.setHeader("ETag", etag);
 
     res.status(200).json({
       data,

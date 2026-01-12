@@ -1,4 +1,5 @@
 import db from "../db/index.js";
+import { supabase } from "../lib/supabase-client.js";
 import type {
   CreateProductSchema,
   UpdateProductSchema,
@@ -104,6 +105,22 @@ export const deleteProductService = async (id: string) => {
 
   if (checkExistingProduct.rowCount === 0) {
     throwHttpError(404, "Product not found", "PRODUCT_NOT_FOUND");
+  }
+
+  const product = checkExistingProduct.rows[0];
+
+  if (product.image_url) {
+    const filePath = product.image_url.split("/products/")[1];
+
+    if (filePath) {
+      const { error } = await supabase.storage
+        .from("image-upload")
+        .remove([filePath]);
+
+      if (error) {
+        throwHttpError(500, "Failed to delete product image");
+      }
+    }
   }
 
   await db.query(

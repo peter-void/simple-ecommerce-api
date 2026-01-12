@@ -30,12 +30,7 @@ router.put(
   updateProductController
 );
 
-router.delete(
-  "/:id",
-  authMiddleware,
-  requireRole("ADMIN"),
-  deleteProductController
-);
+router.delete("/:id", authMiddleware, deleteProductController);
 
 router.post("/:id/upload", authMiddleware, uploadProductImageController);
 

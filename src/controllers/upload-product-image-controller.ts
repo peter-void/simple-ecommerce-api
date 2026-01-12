@@ -34,7 +34,7 @@ export const uploadProductImageController = async (
   const fileName = `products/${productId}-${Date.now()}.png`;
 
   const { error } = await supabase.storage
-    .from("products")
+    .from("image-upload")
     .upload(fileName, fileBuffer, {
       contentType: "image/png",
       upsert: true,
@@ -45,7 +45,7 @@ export const uploadProductImageController = async (
   }
 
   const { data: publicUrlData } = supabase.storage
-    .from("products")
+    .from("image-upload")
     .getPublicUrl(fileName);
 
   const imageUrl = publicUrlData.publicUrl;
@@ -64,5 +64,5 @@ export const uploadProductImageController = async (
     imageUrl,
   });
 
-  return res.json({ data: "MANTAP" });
+  return res.json({ data: "Cool" });
 };
